@@ -29,6 +29,14 @@
   .small { font-size:12px; color:#666; }
   .job { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--line); }
   .hidden { display:none; }
+  .partRow { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px; }
+  .partRow input { flex:1 1 120px; }
+  .partRow .pname { flex:3 1 220px; }
+  .partRow .pqty { flex:0 1 80px; }
+  .photos { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
+  .photos .ph { position:relative; }
+  .photos img { width:90px; height:90px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
+  .photos .x { position:absolute; top:2px; right:2px; width:auto; padding:2px 7px; font-size:11px; margin:0; }  
 </style>
 </head>
 <body>
@@ -131,13 +139,15 @@ function readForm() {
   current.lines = [...document.querySelectorAll('.line')].map(el => ({
     action: el.querySelector('.action').value,
     result: el.querySelector('.result').value,
-    test: el.querySelector('.test').value,
-    testResult: el.querySelector('.testResult').value,
-    part: el.querySelector('.part').value,
-    partNo: el.querySelector('.partNo').value,
-    qty: el.querySelector('.qty').value
-  }));
-}
+    parts: [...el.querySelectorAll('.partRow')]
+      .map(r => ({
+        name: r.querySelector('.pname').value.trim(),
+        no: r.querySelector('.pno').value.trim(),
+        qty: r.querySelector('.pqty').value
+      }))
+      .filter(p => p.name || p.no),
+    photos: el.photoData || []
+
 
 function saveJob() {
   readForm();
@@ -152,20 +162,144 @@ function addLine(data) {
   el.innerHTML =
     '<label>Action taken</label><div class="field"><textarea class="action"></textarea><button class="mic">Mic</button></div>' +
     '<label>Result</label><div class="field"><textarea class="result"></textarea><button class="mic">Mic</button></div>' +
-    '<div class="row"><div><label>Test performed</label><input class="test"></div>' +
-    '<div><label>Test result</label><input class="testResult"></div></div>' +
-    '<div class="row"><div><label>Part changed</label><input class="part"></div>' +
-    '<div><label>Part number (optional)</label><input class="partNo"></div>' +
-    '<div><label>Qty</label><input class="qty" type="number" min="1"></div></div>' +
-    '<button class="secondary">Remove line</button>';
+    '<label>Parts changed</label><div class="parts"></div>' +
+    '<label>Photos</label><div class="photos"></div>' +
+    '<button class="secondary camBtn">Take photo</button>' +
+    '<button class="secondary galBtn">Choose photo</button>' +
+    '<input type="file" accept="image/*" capture="environment" class="camIn hidden">' +
+    '<input type="file" accept="image/*" multiple class="galIn hidden">' +
+    '<button class="secondary remBtn">Remove line</button>';
   const set = (c, v) => { el.querySelector(c).value = v || ''; };
   set('.action', data.action); set('.result', data.result);
-  set('.test', data.test); set('.testResult', data.testResult);
-  set('.part', data.part); set('.partNo', data.partNo); set('.qty', data.qty);
+
   const mics = el.querySelectorAll('.mic');
   mics[0].onclick = function () { dictateEl(el.querySelector('.action'), this); };
   mics[1].onclick = function () { dictateEl(el.querySelector('.result'), this); };
-  el.querySelector('.secondary').onclick = () => el.remove();
+
+  // Parts list: a new empty row appears once the last row has a part and a part number
+  const partsBox = el.querySelector('.parts');
+  const addPartRow = p => {
+    p = p || {};
+    const row = document.createElement('div');
+    row.className = 'partRow';
+    row.innerHTML =
+      '<input class="pname" placeholder="Part changed">' +
+      '<input class="pno" placeholder="Part number">' +
+      '<input class="pqty" type="number" min="1" placeholder="Qty">';
+    row.querySelector('.pname').value = p.name || '';
+    row.querySelector('.pno').value = p.no || '';
+    row.querySelector('.pqty').value = p.qty || '';
+    const check = () => {
+      const rows = partsBox.querySelectorAll('.partRow');
+      const last = rows[rows.length - 1];
+      if (last === row && row.querySelector('.pname').value.trim() && row.querySelector('.pno').value.trim()) {
+        addPartRow();
+      }
+    };
+    row.querySelector('.pname').oninput = check;
+    row.querySelector('.pno').oninput = check;
+    partsBox.appendChild(row);
+  };
+  (data.parts || []).forEach(addPartRow);
+  addPartRow();
+
+  // Photos
+  el.photoData = (data.photos || []).slice();
+  const drawPhotos = () => {
+    const box = el.querySelector('.photos');
+    box.innerHTML = '';
+    el.photoData.forEach((src, i) => {
+      const w = document.createElement('div');
+      w.className = 'ph';
+      w.innerHTML = '<img src="' + src + '"><button class="x">X</button>';
+      w.querySelector('.x').onclick = () => { el.photoData.splice(i, 1); drawPhotos(); };
+      box.appendChild(w);
+    });function addLine(data) {
+  data = data || {};
+  const el = document.createElement('div');
+  el.className = 'line';
+  el.innerHTML =
+    '<label>Action taken</label><div class="field"><textarea class="action"></textarea><button class="mic">Mic</button></div>' +
+    '<label>Result</label><div class="field"><textarea class="result"></textarea><button class="mic">Mic</button></div>' +
+    '<label>Parts changed</label><div class="parts"></div>' +
+    '<label>Photos</label><div class="photos"></div>' +
+    '<button class="secondary camBtn">Take photo</button>' +
+    '<button class="secondary galBtn">Choose photo</button>' +
+    '<input type="file" accept="image/*" capture="environment" class="camIn hidden">' +
+    '<input type="file" accept="image/*" multiple class="galIn hidden">' +
+    '<button class="secondary remBtn">Remove line</button>';
+  const set = (c, v) => { el.querySelector(c).value = v || ''; };
+  set('.action', data.action); set('.result', data.result);
+
+  const mics = el.querySelectorAll('.mic');
+  mics[0].onclick = function () { dictateEl(el.querySelector('.action'), this); };
+  mics[1].onclick = function () { dictateEl(el.querySelector('.result'), this); };
+
+  // Parts list: a new empty row appears once the last row has a part and a part number
+  const partsBox = el.querySelector('.parts');
+  const addPartRow = p => {
+    p = p || {};
+    const row = document.createElement('div');
+    row.className = 'partRow';
+    row.innerHTML =
+      '<input class="pname" placeholder="Part changed">' +
+      '<input class="pno" placeholder="Part number">' +
+      '<input class="pqty" type="number" min="1" placeholder="Qty">';
+    row.querySelector('.pname').value = p.name || '';
+    row.querySelector('.pno').value = p.no || '';
+    row.querySelector('.pqty').value = p.qty || '';
+    const check = () => {
+      const rows = partsBox.querySelectorAll('.partRow');
+      const last = rows[rows.length - 1];
+      if (last === row && row.querySelector('.pname').value.trim() && row.querySelector('.pno').value.trim()) {
+        addPartRow();
+      }
+    };
+    row.querySelector('.pname').oninput = check;
+    row.querySelector('.pno').oninput = check;
+    partsBox.appendChild(row);
+  };
+  (data.parts || []).forEach(addPartRow);
+  addPartRow();
+
+  // Photos
+  el.photoData = (data.photos || []).slice();
+  const drawPhotos = () => {
+    const box = el.querySelector('.photos');
+    box.innerHTML = '';
+    el.photoData.forEach((src, i) => {
+      const w = document.createElement('div');
+      w.className = 'ph';
+      w.innerHTML = '<img src="' + src + '"><button class="x">X</button>';
+      w.querySelector('.x').onclick = () => { el.photoData.splice(i, 1); drawPhotos(); };
+      box.appendChild(w);
+    });
+  };
+  const takeFiles = async files => {
+    for (const f of files) { el.photoData.push(await shrink(f)); }
+    drawPhotos();
+  };
+  el.querySelector('.camBtn').onclick = () => el.querySelector('.camIn').click();
+  el.querySelector('.galBtn').onclick = () => el.querySelector('.galIn').click();
+  el.querySelector('.camIn').onchange = e => takeFiles(e.target.files);
+  el.querySelector('.galIn').onchange = e => takeFiles(e.target.files);
+  el.querySelector('.remBtn').onclick = () => el.remove();
+  drawPhotos();
+
+  $('lines').appendChild(el);
+}
+  };
+  const takeFiles = async files => {
+    for (const f of files) { el.photoData.push(await shrink(f)); }
+    drawPhotos();
+  };
+  el.querySelector('.camBtn').onclick = () => el.querySelector('.camIn').click();
+  el.querySelector('.galBtn').onclick = () => el.querySelector('.galIn').click();
+  el.querySelector('.camIn').onchange = e => takeFiles(e.target.files);
+  el.querySelector('.galIn').onchange = e => takeFiles(e.target.files);
+  el.querySelector('.remBtn').onclick = () => el.remove();
+  drawPhotos();
+
   $('lines').appendChild(el);
 }
 
@@ -173,7 +307,23 @@ function renderLines() {
   $('lines').innerHTML = '';
   (current.lines || []).forEach(addLine);
 }
-
+function shrink(file) {
+  return new Promise(resolve => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1280;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL('image/jpeg', 0.7));
+    };
+    img.src = url;
+  });
+}
 // ---- Voice dictation ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
