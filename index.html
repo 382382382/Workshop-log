@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Workshop Log</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root { --red:#c8102e; --dark:#1b1b1f; --grey:#f2f2f4; --line:#d6d6db; }
   * { box-sizing:border-box; }
@@ -37,6 +38,12 @@
   .photos .ph { position:relative; }
   .photos img { width:90px; height:90px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
   .photos .x { position:absolute; top:2px; right:2px; width:auto; padding:2px 7px; font-size:11px; margin:0; }
+ .rep h3 { font-family:'Orbitron', Arial, sans-serif; font-size:12px; color:var(--red); margin:14px 0 6px; text-transform:uppercase; }
+  .rep .concl { background:#fff3f4; border-left:4px solid var(--red); padding:10px; border-radius:6px; font-size:15px; }
+  .rep table { width:100%; border-collapse:collapse; font-size:13px; }
+  .rep th, .rep td { text-align:left; padding:6px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .rep .meta td:first-child { width:38%; font-weight:bold; }
+  .rep .thumbs img { width:110px; height:110px; object-fit:cover; border-radius:6px; margin:0 6px 6px 0; }
 </style>
 </head>
 <body>
@@ -86,9 +93,17 @@
   </div>
 
   <button onclick="saveJob()">Save job</button>
+   <button onclick="saveJob()">Save job</button>
+  <button class="secondary" onclick="showReport()">Report</button>
   <button class="secondary" onclick="showList()">Back to list</button>
 </section>
-
+<section id="reportView" class="hidden">
+  <div class="card rep" id="reportBody"></div>
+  <button onclick="downloadCSV()">Download CSV</button>
+  <button onclick="downloadXLSX()">Download Excel</button>
+  <button class="secondary" onclick="window.print()">Print</button>
+  <button class="secondary" onclick="showList()">Back to list</button>
+</section>
 </main>
 
 <script>
@@ -305,7 +320,118 @@ function dictateEl(target, btn) {
   btn.onclick = () => { wanted = false; if (rec) { rec.stop(); } finish(); };
   begin();
 }
+function tidy(text) {
+  if (!text) { return ''; }
+  let t = ' ' + text.replace(/\s+/g, ' ') + ' ';
+  const fillers = ['um', 'umm', 'uh', 'uhh', 'er', 'erm', 'ah', 'you know', 'i mean', 'basically', 'actually', 'kind of', 'sort of', 'like i said', 'and then'];
+  fillers.forEach(f => {
+    t = t.replace(new RegExp('\\b' + f + '\\b[,.]?\\s', 'gi'), ' ');
+  });
+  t = t.replace(/\b(\w+)( \1\b)+/gi, '$1');
+  t = t.trim().replace(/\s+([,.;])/g, '$1').replace(/,\s*,/g, ',');
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  if (t && !/[.!?]$/.test(t)) { t += '.'; }
+  return t;
+}
 
+function esc(s) {
+  return String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+// ---- Report ----
+function showReport() {
+  readForm();
+  persist();
+  const j = current;
+  let h = '<h2>Job report</h2>';
+  h += '<h3>Conclusion: what fixed it</h3><div class="concl">' + esc(tidy(j.conclusion) || 'No conclusion entered.') + '</div>';
+  h += '<h3>Job details</h3><table class="meta">' +
+    '<tr><td>Date</td><td>' + esc(j.date) + '</td></tr>' +
+    '<tr><td>Vessel</td><td>' + esc(j.vessel) + '</td></tr>' +
+    '<tr><td>Engine number</td><td>' + esc(j.engine) + '</td></tr>' +
+    '<tr><td>Mechanic</td><td>' + esc(j.mechanic) + '</td></tr>' +
+    '<tr><td>C car number</td><td>' + esc(j.ccar) + '</td></tr>' +
+    '<tr><td>Issue number</td><td>' + esc(j.issue) + '</td></tr>' +
+    '<tr><td>Customer</td><td>' + esc(j.customer) + '</td></tr></table>';
+  const lines = j.lines || [];
+  if (lines.length) {
+    h += '<h3>Work done</h3><table><tr><th>Action</th><th>Result</th></tr>';
+    lines.forEach(l => {
+      h += '<tr><td>' + esc(tidy(l.action)) + '</td><td>' + esc(tidy(l.result)) + '</td></tr>';
+    });
+    h += '</table>';
+  }
+  const parts = allParts(j);
+  if (parts.length) {
+    h += '<h3>Parts used</h3><table><tr><th>Part</th><th>Part number</th><th>Qty</th></tr>';
+    parts.forEach(p => {
+      h += '<tr><td>' + esc(p.name) + '</td><td>' + esc(p.no) + '</td><td>' + esc(p.qty) + '</td></tr>';
+    });
+    h += '</table>';
+  }
+  const photos = lines.flatMap(l => l.photos || []);
+  if (photos.length) {
+    h += '<h3>Photos</h3><div class="thumbs">' + photos.map(s => '<img src="' + s + '">').join('') + '</div>';
+  }
+  $('reportBody').innerHTML = h;
+  $('editView').classList.add('hidden');
+  $('listView').classList.add('hidden');
+  $('reportView').classList.remove('hidden');
+}
+
+function allParts(j) {
+  return (j.lines || []).flatMap(l => l.parts || []);
+}
+function jobRow(j) {
+  const parts = allParts(j).map(p => p.name + (p.no ? ' (' + p.no + ')' : '') + (p.qty ? ' x' + p.qty : '')).join('; ');
+  const work = (j.lines || []).map(l => tidy(l.action) + (l.result ? ' -> ' + tidy(l.result) : '')).join(' | ');
+  return {
+    Date: j.date || '',
+    Vessel: j.vessel || '',
+    'Engine number': j.engine || '',
+    Mechanic: j.mechanic || '',
+    'C car number': j.ccar || '',
+    'Issue number': j.issue || '',
+    Customer: j.customer || '',
+    Conclusion: tidy(j.conclusion),
+    'Parts used': parts,
+    'Work done': work
+  };
+}
+
+function downloadFile(name, blob) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function fileStem() {
+  return 'job-' + (current.issue || current.id) + '-' + (current.date || '');
+}
+
+function downloadCSV() {
+  const row = jobRow(current);
+  const keys = Object.keys(row);
+  const q = v => '"' + String(v).replace(/"/g, '""') + '"';
+  const csv = keys.map(q).join(',') + '\r\n' + keys.map(k => q(row[k])).join(',');
+  downloadFile(fileStem() + '.csv', new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+}
+
+function downloadXLSX() {
+  if (typeof XLSX === 'undefined') { alert('The Excel library did not load. Check your internet connection and refresh.'); return; }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([jobRow(current)]), 'Job');
+  const lineRows = (current.lines || []).map((l, i) => ({
+    Line: i + 1,
+    Action: tidy(l.action),
+    Result: tidy(l.result),
+    Parts: (l.parts || []).map(p => p.name + (p.no ? ' (' + p.no + ')' : '') + (p.qty ? ' x' + p.qty : '')).join('; ')
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lineRows.length ? lineRows : [{ Line: '' }]), 'Work lines');
+  XLSX.writeFile(wb, fileStem() + '.xlsx');
+}
 showList();
 </script>
 </body>
