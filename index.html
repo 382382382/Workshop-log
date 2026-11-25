@@ -182,24 +182,47 @@ function dictate(id, btn) { dictateEl($(id), btn); }
 function dictateEl(target, btn) {
   if (!SR) { alert('Voice input is not supported in this browser. Try Chrome or Safari.'); return; }
   const startAction = btn.onclick;
-  const rec = new SR();
-  rec.lang = 'en-GB';
-  rec.interimResults = false;
-  btn.classList.add('listening');
-  btn.textContent = 'Stop';
+  const MAX_MS = 120000;
+  const base = target.value ? target.value + ' ' : '';
+  let finalText = '';
+  let wanted = true;
+  let rec;
+
   const finish = () => {
+    wanted = false;
+    clearTimeout(timer);
     btn.classList.remove('listening');
     btn.textContent = 'Mic';
     btn.onclick = startAction;
   };
-  rec.onresult = e => {
-    const text = e.results[0][0].transcript;
-    target.value = (target.value ? target.value + ' ' : '') + text;
+
+  const begin = () => {
+    rec = new SR();
+    rec.lang = 'en-GB';
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.onresult = e => {
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) { finalText += t + ' '; } else { interim += t; }
+      }
+      target.value = base + finalText + interim;
+    };
+    rec.onend = () => { if (wanted) { try { begin(); } catch (err) { finish(); } } };
+    rec.onerror = ev => {
+      if (ev.error === 'no-speech' || ev.error === 'aborted') { return; }
+      finish();
+    };
+    rec.start();
   };
-  rec.onend = finish;
-  rec.onerror = finish;
-  btn.onclick = () => rec.stop();
-  rec.start();
+
+  const timer = setTimeout(() => { wanted = false; if (rec) { rec.stop(); } finish(); }, MAX_MS);
+
+  btn.classList.add('listening');
+  btn.textContent = 'Stop';
+  btn.onclick = () => { wanted = false; if (rec) { rec.stop(); } finish(); };
+  begin();
 }
 
 showList();
