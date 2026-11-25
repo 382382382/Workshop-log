@@ -36,7 +36,7 @@
   .photos { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; }
   .photos .ph { position:relative; }
   .photos img { width:90px; height:90px; object-fit:cover; border-radius:6px; border:1px solid var(--line); }
-  .photos .x { position:absolute; top:2px; right:2px; width:auto; padding:2px 7px; font-size:11px; margin:0; }  
+  .photos .x { position:absolute; top:2px; right:2px; width:auto; padding:2px 7px; font-size:11px; margin:0; }
 </style>
 </head>
 <body>
@@ -90,6 +90,7 @@
 </section>
 
 </main>
+
 <script>
 const KEY = 'workshopJobs';
 let jobs = JSON.parse(localStorage.getItem(KEY) || '[]');
@@ -147,7 +148,8 @@ function readForm() {
       }))
       .filter(p => p.name || p.no),
     photos: el.photoData || []
-
+  }));
+}
 
 function saveJob() {
   readForm();
@@ -155,8 +157,7 @@ function saveJob() {
   showList();
 }
 
-
-  function addLine(data) {
+function addLine(data) {
   data = data || {};
   const el = document.createElement('div');
   el.className = 'line';
@@ -231,11 +232,11 @@ function saveJob() {
   $('lines').appendChild(el);
 }
 
-
 function renderLines() {
   $('lines').innerHTML = '';
   (current.lines || []).forEach(addLine);
 }
+
 function shrink(file) {
   return new Promise(resolve => {
     const img = new Image();
@@ -253,6 +254,7 @@ function shrink(file) {
     img.src = url;
   });
 }
+
 // ---- Voice dictation ----
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
