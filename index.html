@@ -181,17 +181,23 @@ function dictate(id, btn) { dictateEl($(id), btn); }
 
 function dictateEl(target, btn) {
   if (!SR) { alert('Voice input is not supported in this browser. Try Chrome or Safari.'); return; }
+  const startAction = btn.onclick;
   const rec = new SR();
   rec.lang = 'en-GB';
   rec.interimResults = false;
   btn.classList.add('listening');
   btn.textContent = 'Stop';
+  const finish = () => {
+    btn.classList.remove('listening');
+    btn.textContent = 'Mic';
+    btn.onclick = startAction;
+  };
   rec.onresult = e => {
     const text = e.results[0][0].transcript;
     target.value = (target.value ? target.value + ' ' : '') + text;
   };
-  rec.onend = () => { btn.classList.remove('listening'); btn.textContent = 'Mic'; };
-  rec.onerror = () => { btn.classList.remove('listening'); btn.textContent = 'Mic'; };
+  rec.onend = finish;
+  rec.onerror = finish;
   btn.onclick = () => rec.stop();
   rec.start();
 }
