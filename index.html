@@ -155,66 +155,8 @@ function saveJob() {
   showList();
 }
 
-function addLine(data) {
-  data = data || {};
-  const el = document.createElement('div');
-  el.className = 'line';
-  el.innerHTML =
-    '<label>Action taken</label><div class="field"><textarea class="action"></textarea><button class="mic">Mic</button></div>' +
-    '<label>Result</label><div class="field"><textarea class="result"></textarea><button class="mic">Mic</button></div>' +
-    '<label>Parts changed</label><div class="parts"></div>' +
-    '<label>Photos</label><div class="photos"></div>' +
-    '<button class="secondary camBtn">Take photo</button>' +
-    '<button class="secondary galBtn">Choose photo</button>' +
-    '<input type="file" accept="image/*" capture="environment" class="camIn hidden">' +
-    '<input type="file" accept="image/*" multiple class="galIn hidden">' +
-    '<button class="secondary remBtn">Remove line</button>';
-  const set = (c, v) => { el.querySelector(c).value = v || ''; };
-  set('.action', data.action); set('.result', data.result);
 
-  const mics = el.querySelectorAll('.mic');
-  mics[0].onclick = function () { dictateEl(el.querySelector('.action'), this); };
-  mics[1].onclick = function () { dictateEl(el.querySelector('.result'), this); };
-
-  // Parts list: a new empty row appears once the last row has a part and a part number
-  const partsBox = el.querySelector('.parts');
-  const addPartRow = p => {
-    p = p || {};
-    const row = document.createElement('div');
-    row.className = 'partRow';
-    row.innerHTML =
-      '<input class="pname" placeholder="Part changed">' +
-      '<input class="pno" placeholder="Part number">' +
-      '<input class="pqty" type="number" min="1" placeholder="Qty">';
-    row.querySelector('.pname').value = p.name || '';
-    row.querySelector('.pno').value = p.no || '';
-    row.querySelector('.pqty').value = p.qty || '';
-    const check = () => {
-      const rows = partsBox.querySelectorAll('.partRow');
-      const last = rows[rows.length - 1];
-      if (last === row && row.querySelector('.pname').value.trim() && row.querySelector('.pno').value.trim()) {
-        addPartRow();
-      }
-    };
-    row.querySelector('.pname').oninput = check;
-    row.querySelector('.pno').oninput = check;
-    partsBox.appendChild(row);
-  };
-  (data.parts || []).forEach(addPartRow);
-  addPartRow();
-
-  // Photos
-  el.photoData = (data.photos || []).slice();
-  const drawPhotos = () => {
-    const box = el.querySelector('.photos');
-    box.innerHTML = '';
-    el.photoData.forEach((src, i) => {
-      const w = document.createElement('div');
-      w.className = 'ph';
-      w.innerHTML = '<img src="' + src + '"><button class="x">X</button>';
-      w.querySelector('.x').onclick = () => { el.photoData.splice(i, 1); drawPhotos(); };
-      box.appendChild(w);
-    });function addLine(data) {
+  function addLine(data) {
   data = data || {};
   const el = document.createElement('div');
   el.className = 'line';
@@ -288,20 +230,7 @@ function addLine(data) {
 
   $('lines').appendChild(el);
 }
-  };
-  const takeFiles = async files => {
-    for (const f of files) { el.photoData.push(await shrink(f)); }
-    drawPhotos();
-  };
-  el.querySelector('.camBtn').onclick = () => el.querySelector('.camIn').click();
-  el.querySelector('.galBtn').onclick = () => el.querySelector('.galIn').click();
-  el.querySelector('.camIn').onchange = e => takeFiles(e.target.files);
-  el.querySelector('.galIn').onchange = e => takeFiles(e.target.files);
-  el.querySelector('.remBtn').onclick = () => el.remove();
-  drawPhotos();
 
-  $('lines').appendChild(el);
-}
 
 function renderLines() {
   $('lines').innerHTML = '';
