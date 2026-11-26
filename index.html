@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+  <link rel="manifest" href="manifest.json">
 <style>
   :root { --red:#c8102e; --dark:#1b1b1f; --grey:#f2f2f4; --line:#d6d6db; }
   * { box-sizing:border-box; }
@@ -47,10 +48,12 @@
   .rep .thumbs img { width:110px; height:110px; object-fit:cover; border-radius:6px; margin:0 6px 6px 0; }
   header { display:flex; justify-content:space-between; align-items:center; gap:10px; }
   header button { margin:0; }
+#net { font-size:11px; padding:4px 8px; border-radius:10px; background:#2e7d32; color:#fff; font-family:Arial, sans-serif; font-weight:bold; }
+  #net.off { background:#e8a800; color:#000; }
 </style>
 </head>
 <body>
-<header><h1>Workshop Log</h1><button onclick="newJob()">New job</button></header>
+<header><h1>Workshop Log</h1><span id="net">Online</span><button onclick="newJob()">New job</button></header>
 <main>
 
 <!-- JOB LIST -->
@@ -111,13 +114,35 @@
 </main>
 
 <script>
-const KEY = 'workshopJobs';
-let jobs = JSON.parse(localStorage.getItem(KEY) || '[]');
+let jobs = [];
 let current = null;
+let db = null;
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('workshopLog', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('jobs', { keyPath: 'id' }); };
+    req.onsuccess = () => { db = req.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function loadJobs() {
+  return new Promise(resolve => {
+    const req = db.transaction('jobs').objectStore('jobs').getAll();
+    req.onsuccess = () => { jobs = (req.result || []).sort((a, b) => a.id - b.id); resolve(); };
+    req.onerror = () => resolve();
+  });
+}
+
+function persist() {
+  const tx = db.transaction('jobs', 'readwrite');
+  const store = tx.objectStore('jobs');
+  store.clear();
+  jobs.forEach(j => store.put(j));
+}
 
 function $(id) { return document.getElementById(id); }
-function persist() { localStorage.setItem(KEY, JSON.stringify(jobs)); }
-
 function showList() {
   $('editView').classList.add('hidden');
   $('reportView').classList.add('hidden');
@@ -456,7 +481,20 @@ async function saveReportFiles() {
     alert('The PDF could not be made. Check your internet connection and try again.');
   }
 }
-  showList();
+function updateNet() {
+  const n = $('net');
+  n.textContent = navigator.onLine ? 'Online' : 'Offline';
+  n.className = navigator.onLine ? '' : 'off';
+}
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+updateNet();
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => null);
+}
+
+openDB().then(loadJobs).then(showList);
 </script>
 </body>
 </html>
