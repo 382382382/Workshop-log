@@ -116,6 +116,7 @@ function persist() { localStorage.setItem(KEY, JSON.stringify(jobs)); }
 
 function showList() {
   $('editView').classList.add('hidden');
+  $('reportView').classList.add('hidden');
   $('listView').classList.remove('hidden');
   const box = $('jobList');
   if (!jobs.length) { box.innerHTML = '<p class="small">No jobs saved yet.</p>'; return; }
