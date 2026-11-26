@@ -45,10 +45,12 @@
   .rep th, .rep td { text-align:left; padding:6px; border-bottom:1px solid var(--line); vertical-align:top; }
   .rep .meta td:first-child { width:38%; font-weight:bold; }
   .rep .thumbs img { width:110px; height:110px; object-fit:cover; border-radius:6px; margin:0 6px 6px 0; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  header button { margin:0; }
 </style>
 </head>
 <body>
-<header><h1>Workshop Log</h1></header>
+<header><h1>Workshop Log</h1><button onclick="newJob()">New job</button></header>
 <main>
 
 <!-- JOB LIST -->
@@ -56,7 +58,7 @@
   <div class="card">
     <h2>Saved jobs</h2>
     <div id="jobList"></div>
-    <button onclick="newJob()">New job</button>
+    
   </div>
 </section>
 
@@ -123,7 +125,8 @@ function showList() {
   const box = $('jobList');
   if (!jobs.length) { box.innerHTML = '<p class="small">No jobs saved yet.</p>'; return; }
   box.innerHTML = '';
-  jobs.forEach((j, i) => {
+  for (let i = jobs.length - 1; i >= 0; i--) {
+    const j = jobs[i];
     const d = document.createElement('div');
     d.className = 'job';
     d.innerHTML = '<div><strong>' + (j.vessel || 'No vessel') + '</strong><br><span class="small">' +
@@ -133,7 +136,7 @@ function showList() {
     b.onclick = () => openJob(i);
     d.appendChild(b);
     box.appendChild(d);
-  });
+  }
 }
 
 function newJob() {
