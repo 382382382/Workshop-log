@@ -1,0 +1,9 @@
+{
+  "name": "Workshop Log",
+  "short_name": "Workshop Log",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1b1b1f",
+  "theme_color": "#c8102e",
+  "icons": []
+}
