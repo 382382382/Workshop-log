@@ -6,6 +6,7 @@
 <title>Workshop Log</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <style>
   :root { --red:#c8102e; --dark:#1b1b1f; --grey:#f2f2f4; --line:#d6d6db; }
   * { box-sizing:border-box; }
@@ -93,14 +94,13 @@
   </div>
 
   <button onclick="saveJob()">Save job</button>
-   <button onclick="saveJob()">Save job</button>
+  
   <button class="secondary" onclick="showReport()">Report</button>
   <button class="secondary" onclick="showList()">Back to list</button>
 </section>
 <section id="reportView" class="hidden">
   <div class="card rep" id="reportBody"></div>
-  <button onclick="downloadCSV()">Download CSV</button>
-  <button onclick="downloadXLSX()">Download Excel</button>
+  <button onclick="saveReportFiles()">Save Excel and PDF</button>
   <button class="secondary" onclick="window.print()">Print</button>
   <button class="secondary" onclick="showList()">Back to list</button>
 </section>
@@ -432,7 +432,23 @@ function downloadXLSX() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(lineRows.length ? lineRows : [{ Line: '' }]), 'Work lines');
   XLSX.writeFile(wb, fileStem() + '.xlsx');
 }
-showList();
+async function saveReportFiles() {
+  downloadXLSX();
+  const el = $('reportBody');
+  const opt = {
+    margin: 10,
+    filename: fileStem() + '.pdf',
+    image: { type: 'jpeg', quality: 0.8 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+  try {
+    await html2pdf().set(opt).from(el).save();
+  } catch (err) {
+    alert('The PDF could not be made. Check your internet connection and try again.');
+  }
+}
+  showList();
 </script>
 </body>
 </html>
