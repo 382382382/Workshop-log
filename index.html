@@ -49,6 +49,7 @@
   header { display:flex; justify-content:space-between; align-items:center; gap:10px; }
   header button { margin:0; }
 #net { font-size:11px; padding:4px 8px; border-radius:10px; background:#2e7d32; color:#fff; font-family:Arial, sans-serif; font-weight:bold; }
+ .faultRow { margin-bottom:6px; }
   #net.off { background:#e8a800; color:#000; }
 </style>
 </head>
@@ -84,6 +85,8 @@
        <label>Customer</label><input id="customer">
     <label>Problem definition</label>
     <div class="field"><textarea id="problem" placeholder="What is the reported problem?"></textarea><button class="mic" onclick="dictate('problem', this)">Mic</button></div>
+  <label>Fault codes</label>
+    <div id="faults"></div>  
   </div>
 
   <div class="card">
@@ -169,20 +172,42 @@ function newJob() {
   jobs.push(current);
   fillForm();
 }
+function addFaultBox(value) {
+  const box = $('faults');
+  const row = document.createElement('div');
+  row.className = 'faultRow';
+  const inp = document.createElement('input');
+  inp.className = 'faultIn';
+  inp.placeholder = 'Fault code';
+  inp.value = value || '';
+  inp.oninput = () => {
+    const all = box.querySelectorAll('.faultIn');
+    if (all[all.length - 1] === inp && inp.value.trim()) { addFaultBox(); }
+  };
+  row.appendChild(inp);
+  box.appendChild(row);
+}
 
+function renderFaults() {
+  $('faults').innerHTML = '';
+  (current.faults || []).forEach(addFaultBox);
+  addFaultBox();
+}
 function openJob(i) { current = jobs[i]; fillForm(); }
 
 const FIELDS = ['date', 'vessel', 'engine', 'mechanic', 'ccar', 'issue', 'customer', 'problem', 'conclusion'];
 
 function fillForm() {
   FIELDS.forEach(f => { $(f).value = current[f] || ''; });
-  renderLines();
+    renderLines();
+  renderFaults();
   $('listView').classList.add('hidden');
   $('editView').classList.remove('hidden');
 }
 
 function readForm() {
-  FIELDS.forEach(f => { current[f] = $(f).value; });
+    FIELDS.forEach(f => { current[f] = $(f).value; });
+  current.faults = [...document.querySelectorAll('.faultIn')].map(i => i.value.trim()).filter(Boolean);
   current.lines = [...document.querySelectorAll('.line')].map(el => ({
     action: el.querySelector('.action').value,
     result: el.querySelector('.result').value,
@@ -376,6 +401,7 @@ function showReport() {
   const j = current;
    let h = '<h2>Job report</h2>';
   h += '<h3>Problem definition</h3><div class="concl">' + esc(tidy(j.problem) || 'No problem entered.') + '</div>';
+  if ((j.faults || []).length) { h += '<h3>Fault codes</h3><div class="concl">' + esc(j.faults.join(', ')) + '</div>'; }
   h += '<h3>Conclusion: what fixed it</h3><div class="concl">' + esc(tidy(j.conclusion) || 'No conclusion entered.') + '</div>';
   h += '<h3>Job details</h3><table class="meta">' +
     '<tr><td>Date</td><td>' + esc(j.date) + '</td></tr>' +
@@ -425,7 +451,8 @@ function jobRow(j) {
     'C car number': j.ccar || '',
     'Issue number': j.issue || '',
         Customer: j.customer || '',
-    'Problem definition': tidy(j.problem),
+       'Problem definition': tidy(j.problem),
+    'Fault codes': (j.faults || []).join('; '),
     Conclusion: tidy(j.conclusion),
     'Parts used': parts,
     'Work done': work
