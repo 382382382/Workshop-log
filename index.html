@@ -76,7 +76,9 @@
       <div><label>C car number</label><input id="ccar"></div>
       <div><label>Issue number</label><input id="issue"></div>
     </div>
-    <label>Customer</label><input id="customer">
+       <label>Customer</label><input id="customer">
+    <label>Problem definition</label>
+    <div class="field"><textarea id="problem" placeholder="What is the reported problem?"></textarea><button class="mic" onclick="dictate('problem', this)">Mic</button></div>
   </div>
 
   <div class="card">
@@ -142,7 +144,7 @@ function newJob() {
 
 function openJob(i) { current = jobs[i]; fillForm(); }
 
-const FIELDS = ['date', 'vessel', 'engine', 'mechanic', 'ccar', 'issue', 'customer', 'conclusion'];
+const FIELDS = ['date', 'vessel', 'engine', 'mechanic', 'ccar', 'issue', 'customer', 'problem', 'conclusion'];
 
 function fillForm() {
   FIELDS.forEach(f => { $(f).value = current[f] || ''; });
@@ -344,7 +346,8 @@ function showReport() {
   readForm();
   persist();
   const j = current;
-  let h = '<h2>Job report</h2>';
+   let h = '<h2>Job report</h2>';
+  h += '<h3>Problem definition</h3><div class="concl">' + esc(tidy(j.problem) || 'No problem entered.') + '</div>';
   h += '<h3>Conclusion: what fixed it</h3><div class="concl">' + esc(tidy(j.conclusion) || 'No conclusion entered.') + '</div>';
   h += '<h3>Job details</h3><table class="meta">' +
     '<tr><td>Date</td><td>' + esc(j.date) + '</td></tr>' +
@@ -393,7 +396,8 @@ function jobRow(j) {
     Mechanic: j.mechanic || '',
     'C car number': j.ccar || '',
     'Issue number': j.issue || '',
-    Customer: j.customer || '',
+        Customer: j.customer || '',
+    'Problem definition': tidy(j.problem),
     Conclusion: tidy(j.conclusion),
     'Parts used': parts,
     'Work done': work
